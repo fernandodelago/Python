@@ -1,0 +1,21 @@
+def unir_dataframes(*kargs):
+  '''
+  Entrada:
+  [df1, df2, ... dfn] - Lista de dataframes
+  Saída:
+  df_final - dataframe com os resultados da união dos dataframes da lista
+  Exemplo de chamada:
+  df_final = unir_dataframes(df1, df2, df3)
+  '''
+  from pyspark.sql.functions import lit, col
+  todas_colunas = []
+  df_final = None
+  for df in kargs:
+    [todas_colunas.append(coluna)
+     for coluna in df.columns if coluna not in todas_colunas]
+  for df in kargs:
+    tmp_df = df.select([
+      lit(None).alias(coluna) if coluna not in df.columns
+      else col(coluna) for coluna in todas_colunas])
+    df_final = tmp_df if df_final is None else df_final.union(tmp_df)
+  return df_final
