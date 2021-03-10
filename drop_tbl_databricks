@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+def drop_tbl_databricks(var_db String, var_nome_tabela String, var_path String):
+    '''
+    Função para excluir tabela no Databricks
+    Entrada:
+    var_db -> nome do database onde está a tabela
+    var_nome_tabela -> nome da tabela a ser deletada
+    var_path -> caminho onde estão armazenados os arquivos da tabela (LOCATION)
+    Saída:
+    fl_exclusao -> 0 - tabela excluida
+                   1 - tabela não existe
+                   2 - erro na exclusão
+    '''
+
+    try:
+        df_table = spark.sql('''
+            show tables in {db} like "{tabela}" 
+            '''.format(db = var_db,tabela = var_nome_tabela))
+        exist = str(df_table.count())
+        
+        if exist == '1':
+            dbutils.fs.rm('{var_path}/{nome_tabela}'.format(nome_tabela = var_nome_tabela
+                                                           ,var_path = var_path),True)
+            spark.sql('''drop table if exists {db}.{tabela}'''.format(db = var_db
+                                                                     ,tabela = var_nome_tabela))
+            fl_exclusao = 0
+        else:
+            # tabela não existe
+            fl_exclusao = 1
+    except Exception as e:
+        raise e
+        fl_exclusao = 2
+    finally:
+        return fl_exclusao
