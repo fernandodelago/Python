@@ -1,0 +1,60 @@
+def grava_csv(df, path_to_write, nome_arquivo, sep):
+  """
+  Função para gravar em arquivo CSV único.
+  ---
+  (EN)Function to save data in only one CSV file.
+  ---
+  Entrada (Input):
+   df - dataframe spark.
+   path_to_write - path onde deve ser gravado o arquivo .csv.
+   nome_arquivo - nome do arquivo que deve ser gravado (com extensão!).
+   
+  Saída (Output)..:
+   return_code - código de returno da chamada.
+     |-> 0 - Processamento com sucesso.
+     |-> 1 - Path não informado.
+     |-> 2 - Nome do arquivo a gravar nao informado.
+     |-> 3 - Separador de campos não informado.
+   msg - mensagem informativa.
+  ----
+  Example chamada (Example Call):
+  grava_csv(df, '/mnt/files', 'my_output.csv', ';')
+  """
+  try:
+    #path_to_write = path_to_write
+    #nome_arquivo = nome_arquivo
+    #sep = sep
+    if not path_to_write:
+      msg = '#E# Path nao informado.'
+      return_code = 1
+    elif not nome_arquivo:
+      msg = '#E# Nome do arquivo a gravar nao informado.'
+      return_code = 2
+    elif not sep:
+      msg = '#E# Separador de campos não informado.'
+      return_code = 3
+    else:
+      var_nome_arquivo = nome_arquivo
+      work_dir = (path_to_write + '/tmp/' + var_nome_arquivo)
+      dest_file = (path_to_write + '/' + var_nome_arquivo )
+      
+      df.coalesce(1)\
+          .write.format("csv")\
+          .mode("overwrite")\
+          .option("header", "true")\
+          .options(delimiter='{sep}'.format(sep = sep)) \
+          .save("{path_save}".format(path_save = work_dir) ,encoding='utf-8')
+
+      files = dbutils.fs.ls(work_dir)
+      csv_file = [x.path for x in files if x.path.endswith(".csv")][0]
+      # move o arquivo unico para o dest_file
+      dbutils.fs.mv(csv_file, dest_file)
+      # remove o diretorio de trabalho
+      dbutils.fs.rm(work_dir, recurse = True)
+      msg = 'Processamento com sucesso.'
+      return_code = 0
+  except:
+    msg = '#E# Ocorreu um erro inesperado.'
+    return_code = 9
+  finally:
+    return return_code, msg
