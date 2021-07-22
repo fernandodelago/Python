@@ -7,25 +7,28 @@ def remove_delta_table(var_db, var_nome_tabela, var_path):
   Entrada:
    var_db - nome do schema do datalake.
    var_nome_tabela - nome da tabela do datalake.
-   var_path - caminho onde fica os dados da tabela Delta no datalake
+   var_path - caminho onde fica os dados da tabela Delta no datalake sem a última barra
   Retorno:
   rc_code
    |-> 0 - Tabela excluída com sucesso.
    |-> 1 - Tabela não encontrada. Confirme o database e o path informado se estão corretos.
+   |-> 2 - Erro Grave! Tentativa de excluir raiz dos arquivos. Corriga o path e tente novamente.
    |-> 9 - Erro inesperado.
   ret_msg - mensagem de retorno de acordo com o rc_code.
   '''
   try:
     db_tabela = var_db + '.' + var_nome_tabela
-    df_table = spark.sql('''show tables in {db} like "{tabela}" '''.format(db = var_db, tabela = var_nome_tabela))
-    v_exist = str(df_table.count())
-    
-    if v_exist == '1':
-      dbutils.fs.rm('{var_path_wrk}/{nome_tabela}'.format(var_path_wrk = var_path, nome_tabela = var_nome_tabela),True)
-      spark.sql('DROP TABLE if exists {tabela}'.format(tabela = db_tabela))
-      rc_code = 0
+    if var_path == '/mnt':
+      rc_code = 2
     else:
-      rc_code = 1
+      df_table = spark.sql('''show tables in {db} like "{tabela}" '''.format(db = var_db, tabela = var_nome_tabela))
+      v_exist = str(df_table.count())
+      if v_exist == '1':
+        dbutils.fs.rm('{var_path_wrk}/{nome_tabela}'.format(var_path_wrk = var_path, nome_tabela = var_nome_tabela),True)
+        spark.sql('DROP TABLE if exists {tabela}'.format(tabela = db_tabela))
+        rc_code = 0
+      else:
+        rc_code = 1
   except:
     rc_code = 9
   finally:
@@ -33,6 +36,8 @@ def remove_delta_table(var_db, var_nome_tabela, var_path):
       ret_msg = 'Tabela excluída ' + db_tabela + ' com sucesso.'
     elif rc_code == 1:
       ret_msg = 'Tabela ' + db_tabela + ' não encontrada. Confirme o database e o path informado se estão corretos.'
+    elif rc_code == 2:
+      ret_msg = 'Erro Grave! Tentativa de excluir raiz dos arquivos. Corriga o path e tente novamente.'
     else:
       ret_msg = 'Ocorreu um erro inesperado.'
       
