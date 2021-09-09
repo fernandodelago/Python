@@ -1,0 +1,140 @@
+# -*- coding: utf-8 -*-
+"""
+# Read CSV file
+"""
+# used to upload file on Colab
+#-----------------
+#from google.colab import files
+#uploaded = files.upload()
+
+import pandas as pd
+import urllib.request
+import json
+import psycopg2
+import requests, bs4
+
+v_arquivo = 'craftable trucks Ltd - Customer List.csv'
+
+pd_df = pd.read_csv(v_arquivo)
+
+pd_df
+
+pd_df2 = pd_df
+
+# apply uppercase in column names
+pd_df2.columns = map(str.upper, pd_df.columns)
+
+# apply uppercase in data
+pd_df2 = pd_df2.apply( lambda x : x.str.upper())
+
+# remove SPACES from name columns
+pd_df2.columns = pd_df2.columns.str.replace(' ','_')
+
+pd_df2
+
+dict_special_carac = {
+    '\n' : '',
+    '#' : '',
+    '$' : 'S',
+    '€' : 'E',
+    '!' : '',
+    '?' : '',
+    ':' : '',
+    'º' : '' 
+}
+
+#def remove_specials(v_word):
+#  v_word_correct = dict_special_carac.get(v_word)
+#  if v_word_correct is None:
+#    v_word_correct = v_word
+#  return v_word_correct
+
+pd_df3 = pd_df2
+
+pd_df3
+
+#facts['pop2050'] = facts.apply(lambda row: final_pop(row['population'],row['population_growth']),axis=1)
+#new_df = df.apply(lambda x: x + 5, axis = 1)
+#df['fee'] = df.apply(lambda x: feez(x['total_rides'], x['plan_name']), axis=1)
+#pd_df3['COMPANY_NAME'] = pd_df3.apply(lambda x: remove_specials(x['COMPANY_NAME']),axis=1)
+
+pd_df3['COMPANY_NAME'] = pd_df3.apply(lambda x: pd_df3['COMPANY_NAME'].str.replace('#',''))
+pd_df3['COMPANY_NAME'] = pd_df3.apply(lambda x: pd_df3['COMPANY_NAME'].str.replace('$',''))
+pd_df3['COMPANY_NAME'] = pd_df3.apply(lambda x: pd_df3['COMPANY_NAME'].str.replace('€','E'))
+pd_df3['COMPANY_NAME'] = pd_df3.apply(lambda x: pd_df3['COMPANY_NAME'].str.replace('/n','E'))
+pd_df3['COMPANY_NAME'] = pd_df3.apply(lambda x: pd_df3['COMPANY_NAME'].str.replace('!',''))
+pd_df3['COMPANY_NAME'] = pd_df3.apply(lambda x: pd_df3['COMPANY_NAME'].str.replace('&',' '))
+pd_df3['COMPANY_NAME'] = pd_df3.apply(lambda x: pd_df3['COMPANY_NAME'].str.replace('?',''))
+pd_df3['COMPANY_NAME'] = pd_df3.apply(lambda x: pd_df3['COMPANY_NAME'].str.replace('°',''))
+pd_df3['COMPANY_NAME'] = pd_df3.apply(lambda x: pd_df3['COMPANY_NAME'].str.replace('’',' '))
+pd_df3['COMPANY_NAME'] = pd_df3.apply(lambda x: pd_df3['COMPANY_NAME'].str.replace('\'',' '))
+pd_df3['COMPANY_NAME'] = pd_df3.apply(lambda x: pd_df3['COMPANY_NAME'].str.replace(':',' '))
+pd_df3['POSTCODE'] = pd_df3.apply(lambda x: pd_df3['POSTCODE'].str.replace('\n',''))
+pd_df3['POSTCODE'] = pd_df3.apply(lambda x: pd_df3['POSTCODE'].str.replace(u' ','#'))
+pd_df3['POSTCODE'] = pd_df3.apply(lambda x: pd_df3['POSTCODE'].str.replace('#',' '))
+
+pd_df3
+
+url_request = 'https://api.postcodes.io/postcodes/{0}'
+
+df_lon_lat = pd.DataFrame( pd_df3['POSTCODE'])
+df_lon_lat['LONGITUDE'] = 'NaN'
+df_lon_lat['LATITUDE'] = 'NaN'
+
+for index,row in df_lon_lat.iterrows():
+  print('#=== result ===')
+  print('# POSTCODE => ' + str(row['POSTCODE']))
+
+  v_to_request = str(row['POSTCODE'])
+  url_request2 = url_request.format(v_to_request)
+  headers = {"User-Agent":"Mozilla/5.0"}
+  response = requests.get(url_request2.replace(' ',''), headers=headers)
+  soup = bs4.BeautifulSoup(response.text, 'html.parser')
+  x = soup.text.splitlines()
+
+  if len(x) > 0:
+    json_file = json.loads(soup.text)
+    v_status = json_file.get('status')
+    
+    print('# v_status => ' + str(v_status))
+
+    if v_status == 200:
+      result1 = json_file.get('result')
+      v_longitude = None
+      v_latitude = None
+      v_longitude = result1.get('longitude')
+      print('v_longitude => ' + str(v_longitude))
+      v_latitude = result1.get('latitude')
+      print('v_latitude  => ' + str(v_latitude))
+      #print(str(v_longitude) + ' , ' + str(v_latitude))
+      print('#=== FIM-result ===')
+      #print('# ' + str(v_to_request))
+      if row['POSTCODE'] == v_to_request:
+        df_lon_lat.loc[index,'LONGITUDE'] = str(v_longitude)
+        df_lon_lat.loc[index,'LATITUDE'] = str(v_latitude)
+    else:
+      print('# v_status => ' + str(v_status) )
+      print('#--------------------------')
+
+#df_lon_lat
+
+df_new = pd.merge(left=pd_df3,right=df_lon_lat,left_on='POSTCODE',right_on='POSTCODE')
+
+#df_new
+#--- Connection with Postgres
+connection_string=("dbname='postresdb' user='postgres' Host='localhost:5432' password='postgres'")
+conn = psycopg2.connect(connection_string) 
+
+#set cursor
+cursor = conn.cursor()
+#{0}POSTCODE {1}COMPANY_NAME  {2}PHONE  {3}LONGITUDE {4}LATITUDE
+qry_insert = 'INSERT INTO TB_ADDRESS VALUES({0},{1},{2},{3},{4})'
+
+for idx,v_row in df_new.iterrows():
+  qry_insert.format(str(v_row['POSTCODE'])
+                   ,str(v_row['COMPANY_NAME'])
+                   ,str(v_row['PHONE'])
+                   ,str(v_row['LONGITUDE'])
+                   ,str(v_row['LATITUDE']))
+  
+  cursor.execute(qry_insert)
