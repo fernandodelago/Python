@@ -5,7 +5,7 @@ def remove_delta_table(var_db, var_nome_tabela):
   '''
   Função que deleta tabelas Delta do datalake Azure
   Entrada:
-   var_db - nome do schema do datalake.
+   var_db - nome do schema do datalake. 
    var_nome_tabela - nome da tabela do datalake.
   Retorno:
   rc_code
