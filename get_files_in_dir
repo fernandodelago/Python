@@ -1,0 +1,28 @@
+def udf_get_all_files_on_dir(par_path):
+    '''
+    Return a list with files founded on all subdiretories of path.
+    IN.:
+      par_path -> String - path with "/"
+    OUT:
+      list_of_files -> List format - list with all files founded in the subdiretories of the path.
+    '''
+    try:
+        list_of_files = []
+        rt_code = 0
+        if par_path is None:
+            rt_code = 1
+        for (root,v_dir_names,v_file_names) in os.walk(v_base_path):
+            list_of_files += [os.path.join(root, file) for file in v_file_names]
+    except:
+        rt_code = 9
+    finally:
+        if rt_code == 1:
+            v_msg = ('# Parameter par_path is null.')
+        elif rt_code == 9:
+            v_msg = ('#E# Ocurred an error during the execution.')
+        else:
+            v_msg = ('# Success Execution.')
+        
+        if rt_code != 0:
+            print(v_msg)
+        return list_of_files
