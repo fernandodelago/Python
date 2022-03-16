@@ -1,28 +1,10 @@
-from pyspark.sql.functions import col, regexp_replace
-
-# substitui vogais com acentos por sem acentos
-# substitui "Ç" por "C"
-# caracteres especiais ficarão com valor '#'
-
-acentos_portugues = [
-    (u'á', 'a'), (u'Á', 'A'),
-    (u'â', 'a'), (u'Â', 'A'),
-    (u'à', 'a'), (u'À', 'A'),
-    (u'ã', 'a'), (u'Ã', 'A'),
-    (u'é', 'e'), (u'É', 'E'),
-    (u'ê', 'e'), (u'Ê', 'E'),
-    (u'í', 'i'), (u'Í', 'I'),
-    (u'ò', 'o'), (u'Ò', 'O'),
-    (u'ô', 'o'), (u'Ô', 'O'),
-    (u'ó', 'o'), (u'Ó', 'O'),
-    (u'ú|ü', 'u'), (u'Ú|Ű', 'U'),
-    (u'ñ', 'n'),
-    (u'ç', 'c'), (u'Ç', 'C'),
-    ('[^\x00-\x7F]', '#') 
-]
-
-def remove_acentos(column):
-    r = col(column)
-    for a, b in acentos_portugues:
-        r = regexp_replace(r, a, b)
-    return r.alias('remove_acentos(' + column + ')')
+def udf_col_name_standard(df_name):
+    '''
+    Format all columns of dataframe in lowercase and remove special characters for "_".
+    Input.: Spark Dataframe
+    Output: Spark Dataframe
+    Example how to use:
+    df_result = udf_col_name_standard(df_original_data)
+    '''
+    # library used: import re
+    return df_name.toDF(*[re.sub("[^0-9a-zA-Z]+",'_', item_column).lower() for item_column in df_name.columns])
