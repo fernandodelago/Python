@@ -1,0 +1,37 @@
+import os
+import pandas as pd
+from pyspark.sql.types import StructField,StructType, StringType
+from pyspark.sql.functions import lit
+
+def ReturnStructSchema(columns):
+    '''mount a structure field of schema'''
+    typelist = []
+    for e in columns:
+        typelist.append("StructField(\""+e+"\",StringType(),True)")
+    return eval('StructType(['+','.join(typelist)+'])') 
+    
+list_of_files = []
+for (root,v_dir_names,v_file_names) in os.walk(v_base_path):
+    list_of_files += [os.path.join(root, file) for file in v_file_names]
+
+if len(list_of_files) == 0:
+    raise Exception('#E# The folder is empty. Verify if the files was uploaded to correct folder ' + v_base_path)
+
+list_of_files
+
+fl_1a_read = True
+for item in list_of_files:
+    v_path_splited = item.split(sep='/')
+    tab_name = pd.ExcelFile(item).sheet_names
+    df_pd_hist01 = pd.read_excel(item, sheet_name=tab_name[0], engine = 'openpyxl')
+
+    if fl_1a_read:
+        df_pd_bronze = df_pd_hist01
+        fl_1a_read = False
+    else:
+        df_pd_bronze = pd.concat([df_pd_bronze,df_pd_hist01])
+
+# Converting PandasDF to SparkDF
+df_original = spark.createDataFrame(df_pd_bronze, ReturnStructSchema(df_pd_bronze.columns) )
+df_original = df_original.withColumn('load_time',lit(current_timestamp()))
+df_original.cache()
