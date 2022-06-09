@@ -1,0 +1,9 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+from zipfile import ZipFile
+
+v_file = 'book_test.zip'
+
+with ZipFile(v_file,'r') as ZipObj:
+  ZipObj.extractall()
