@@ -1,0 +1,25 @@
+# coding: utf-8
+
+start = time.time()
+def loop(item):
+    '''Function to read excel files using Pandas'''
+    tab_name = pd.ExcelFile(item).sheet_names # get tabname from excel file
+    v_path_splited = item.split(sep='/') # get the file path and slipt by "/"
+    df_pd_hist01 = pd.read_excel(item, sheet_name=tab_name[0], engine = 'openpyxl')
+    df_pd_hist01['filepath'] = str(item) # set literal(fixed value) to a column
+    df_pd_hist01['original_type'] = str(v_path_splited[-4]) # set literal(fixed value) to a column
+    df_pd_hist01['scenario_comp'] = str(v_path_splited[-3])
+    df_pd_hist01['ingestion_period'] = str(v_path_splited[-2])
+    return df_pd_hist01
+
+# send jobs in parallel
+df = Parallel(n_jobs=-1, verbose=10)(delayed(loop)(item) for item in list_of_files) 
+# concatenate the results
+df = pd.concat(df, ignore_index=True)
+# convert Pandas dataframe to Spark dataframe
+df_original = spark.createDataFrame(df, v_schema_excel_files ) # v_schema_excel_file is a fixed structType/structField
+# set literal(fixed value) to a column
+df_original = df_original.withColumn('load_time',lit(current_timestamp()))
+end = time.time()
+# calculate the time of all operation
+print("Excel//:", end - start)
