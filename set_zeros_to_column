@@ -1,0 +1,5 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+udf_assumes_zeros = lambda df,x: df.withColumn(x,lit(0.000))
+print('# Function udf_assumes_zeros defined. To use -> udf_assumes_zeros(df,column_name)')
