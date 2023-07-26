@@ -5,7 +5,7 @@ from pyspark.sql.functions import trim
 # COMMAND ----------
 
 # DBTITLE 1,Set variables
-BASE_URL = '''https://dremio.rbone.net'''
+BASE_URL = '''https://dremio.mycompany.net'''
 headers = {'Content-Type': 'application/json'}
 v_service_id = dbutils.secrets.get(scope = 'name_of_scope', key = 'service-id')
 v_service_pwd = dbutils.secrets.get(scope = 'name_of_scope', key = 'service-secret')
