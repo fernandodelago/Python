@@ -1,8 +1,18 @@
 # coding: utf-8
+#!/usr/bin/env python3
 
 start = time.time()
 def loop(item):
-    '''Function to read excel files using Pandas'''
+    '''Function to read excel files using Pandas
+    It must install some libraries: pip install pandas openpyxl joblib pyspark
+    To use the libraries do:
+    import pandas as pd
+    from joblib import Parallel, delayed
+    from pyspark.sql.functions import lit, current_timestamp
+    import time
+    '''
+
+
     tab_name = pd.ExcelFile(item).sheet_names # get tabname from excel file
     v_path_splited = item.split(sep='/') # get the file path and slipt by "/"
     df_pd_hist01 = pd.read_excel(item, sheet_name=tab_name[0], engine = 'openpyxl')
