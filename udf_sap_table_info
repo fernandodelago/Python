@@ -1,0 +1,42 @@
+def busca_info_sap_table(var_sap_table_name):
+    '''Busca informações de tabela SAP na web
+    Requirements
+    pip install beautifulsoup4
+    pip install lxml
+    '''
+    try:
+        from bs4 import BeautifulSoup
+        import requests, json
+        import pandas as pd
+
+        var_sap_table_name = str(var_sap_table_name).lower()
+        # URL da página de busca
+        url = "https://leanx.eu/en/sap/table/{0}.html".format(var_sap_table_name)
+        print('# Buscando info de ' + str(var_sap_table_name) + ' na Web.')
+        # Realiza a requisição
+        response = requests.get(url)
+        
+        # Verifica se a requisição foi bem-sucedida
+        response.raise_for_status()
+        
+        # Obtém o conteúdo da página em formato HTML
+        data = response.text
+
+        soup = BeautifulSoup(data, "html.parser")
+        table = soup.find('table')
+
+        if not table:
+            print('Tabela nao encontrada - pagina web com formatacao diferente do esperado')
+        
+        pd_df = pd.read_html(str(table))[0]
+
+        return spark.createDataFrame(pd_df)
+    
+    except Exception as e:
+        print(f"Erro ao ler informações da tabela: {str(e)}")
+        print("Verique se beautifulsoup4 e lxml estao instalados.")
+        return None
+print('# Função busca_info_sap_table() definida.')
+print('# Para usar:')
+print('spark_df = busca_info_sap_table(var_sap_table_name)')
+print('display(spark_df)')
