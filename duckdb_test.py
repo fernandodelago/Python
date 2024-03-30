@@ -41,8 +41,24 @@ VALUES ('San Francisco', -194.0, 53.0);
 duckdb.sql(v_query)
 
 v_query = '''
+CREATE TABLE weather (
+    city    VARCHAR,
+    temp_lo INTEGER, -- minimum temperature on a day
+    temp_hi INTEGER, -- maximum temperature on a day
+    prcp    REAL,
+    date    DATE
+);
+'''
+duckdb.sql(v_query)
+
+v_query = '''
 INSERT INTO weather
 VALUES ('San Francisco', 46, 50, 0.25, '1994-11-27');
+'''
+duckdb.sql(v_query)
+
+v_query = '''
+show tables;
 '''
 duckdb.sql(v_query)
 
@@ -111,3 +127,129 @@ results_2 = duckdb.sql(v_query).to_df()
 type(results_2)
 
 results_2
+
+v_query = '''
+show databases
+'''
+duckdb.sql(v_query)
+
+"""## Enable DuckDB to read Excel files (xlsx)"""
+
+v_query = '''
+INSTALL spatial;
+LOAD spatial;
+'''
+duckdb.sql(v_query)
+
+v_query = '''
+SELECT * FROM st_read('/content/anunciospub2023.xlsx');
+'''
+duckdb.sql(v_query)
+
+var_path = '/content/'
+lst_files = [
+    ['anunciospub2023.xlsx','tpv_anuncios1'],
+    ['anunciospub2024.xlsx','tpv_anuncios2'],
+    ['cont-localexecucao2019.xlsx','tpv_localexec1'],
+    ['cont-localexecucao2023.xlsx','tpv_localexec2'],
+    ['cont-localexecucao2024.xlsx','tpv_localexec3'],
+    ]
+
+for item in lst_files:
+  v_query = f'''CREATE OR REPLACE TEMP VIEW {item[1]} AS SELECT * FROM st_read('{var_path}{item[0]}');'''
+  duckdb.sql(v_query)
+  print(f'# Tempview {item[1]} created.')
+
+v_query = '''
+show tables
+'''
+duckdb.sql(v_query)
+
+v_query = '''
+create or replace temp view tpv_anuncios_full
+as
+select * from tpv_anuncios1
+union
+select * from tpv_anuncios2
+'''
+df_duck = duckdb.sql(v_query)
+
+v_query = '''
+CREATE OR REPLACE MACRO remove_specials(campo) AS (
+    SELECT REPLACE(REPLACE(TRANSLATE(campo, 'áàâãäéèêëíìîïóòôõöúùûüÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜ', 'aaaaaeeeeiiiiooooouuuuAAAAAEEEEIIIIIOOOOOUUU'), 'ç', 'c'), 'Ç', 'C')
+);
+'''
+duckdb.sql(v_query)
+
+v_query = '''
+CREATE OR REPLACE TEMPORARY VIEW tpv_anuncios_raw AS
+select
+   numeroAnuncio      as num_anuncio
+  ,dataPublicacao     as dt_publicacao
+  ,nifEntidade        as nif_entidade
+  ,designacaoEntidade as nome_entidade
+  ,descricaoAnuncio   as desc_anuncio
+  ,url                as url_address
+  ,numDR              as num_dr
+  ,serie              as num_serie
+  ,tipoActo           as tipo_acto
+  ,tiposContrato      as tipo_contrato
+  ,"Preço Base"       as preco_base
+  ,cpvPrincipal       as cpv_principal
+  ,modeloAnuncio      as modelo_anuncio
+  ,Ano                as ano
+from tpv_anuncios_full;
+'''
+duckdb.sql(v_query)
+
+v_query = '''
+CREATE OR REPLACE TEMPORARY VIEW tpv_anuncios_final AS
+select
+   num_anuncio
+  ,dt_publicacao
+  ,nif_entidade
+  ,lower(remove_specials(nome_entidade)) as nome_entidade
+  ,lower(remove_specials(desc_anuncio)) as desc_anuncio
+  ,url_address
+  ,num_dr
+  ,num_serie
+  ,lower(remove_specials(tipo_acto)) as tipo_acto
+  ,lower(remove_specials(tipo_contrato)) as tipo_contrato
+  ,ifnull(TRY_CAST(preco_base AS DOUBLE PRECISION),0.00 ) as preco_base
+  ,lower(remove_specials(cpv_principal)) as cpv_principal
+  ,lower(remove_specials(modelo_anuncio)) as modelo_anuncio
+  ,ano
+from tpv_anuncios_raw;
+'''
+duckdb.sql(v_query)
+
+duckdb.sql('''show tables''')
+
+import pandas as pd
+
+pd.set_option("display.max_columns", None)
+pd.set_option("display.max_colwidth", None)
+
+duckdb.sql('desc tpv_anuncios_final')
+
+duckdb.sql('''
+select cpv_principal
+     , split_part(cpv_principal, ' ', 1) as contrato_id
+from tpv_anuncios_final''').to_df()
+
+# get the top 5 greater values of preco_base
+df_duck = duckdb.sql('''
+select * from
+(select
+  nif_entidade, nome_entidade
+ ,CAST(sum(preco_base) AS DECIMAL(15,2) ) as total_preco_base
+from tpv_anuncios_final
+group by nif_entidade, nome_entidade) t1
+order by total_preco_base desc, nif_entidade, nome_entidade
+limit 5
+''').to_df()
+df_duck
+
+duckdb.sql('''
+select * from tpv_localexec1 where cast(idcontrato as string) like '601170%'
+''')
