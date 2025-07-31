@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+def udf_try_refresh(refresh_func, tables, years=None, countries=None, var_max_tries=3):
+    # use lib time - import time
+    #
+    # Use it when you need to do a refresh in tables used in data cubes.
+    # This function will try to refresh the tables a maximum of var_max_tries times.
+    #
+    # Input parameters:
+    # refresh_func - name of the function
+    # tables - list of tables to refresh
+    # years - list of years to refresh
+    # countries - list of countries to refresh
+    #
+    # sample of call
+    # udf_try_refresh(refresh_history, tables=analysis_dates_product_tables, years=["2021"], countries=countryPartition)
+    # udf_try_refresh(refresh_tables, remaining_body)
+    var_tries = 0
+    while var_tries < var_max_tries:
+        try:
+            if years is not None and countries is not None:
+                refresh_func(tables, years=years, countries=countries)
+            else:
+                refresh_func(tables)
+            print(f"# refresh of {tables} executed with success.")
+            break
+        except Exception as e:
+            var_tries += 1
+            print(f"# Error in the try {var_tries}: {e}")
+            if var_tries < var_max_tries:
+                print("# Waiting 5 minutes before try again...")
+                print('#---------------------------------------')
+                time.sleep(5 * 60)
+            else:
+                print("# Number of try exceeded. Exiting...")
