@@ -1,0 +1,22 @@
+#!/usr/bin/python3
+def udf_cast_columns(df, cast_dict):
+    """
+    Recebe um dataframe e um dicionário {'fields': [...], 'type': 'datatype'}.
+    Faz cast dos campos informados para o tipo especificado.
+    Lança exceção se algum campo não existir no dataframe.
+    """
+    fields = cast_dict.get('fields', [])
+    dtype = cast_dict.get('type', None)
+    if not fields or not dtype:
+        raise Exception("Dictionary must contain 'fields' and 'type' keys with valid values.")
+    for col_name in fields:
+        if col_name not in df.columns:
+            raise Exception("column to cast not found in the dataframe")
+        df = df.withColumn(col_name, F.col(col_name).cast(dtype))
+    return df
+
+# exemplo de chamada
+int_cols = ["Sequential", "EventDate_Number", "Member_ID", "Phone", "Mobile"]
+date_cols = ["EventDate", "SelectionDate"]
+df_converted = udf_cast_columns(df_converted, {'fields': int_cols, 'type': 'int'})
+df_converted = udf_cast_columns(df_converted, {'fields': date_cols, 'type': 'date'})
